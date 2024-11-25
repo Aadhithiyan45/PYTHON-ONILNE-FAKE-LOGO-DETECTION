@@ -1,0 +1,64 @@
+import cv2
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+import os
+
+# Step 1: Feature Extraction
+def extract_features(image_path):
+    image = cv2.imread(image_path)
+    image = cv2.resize(image, (100, 100))  # Standardize size
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # Convert to grayscale
+    return gray.flatten()  # Flatten image to 1D array
+
+# Step 2: Load Dataset
+def load_dataset(dataset_path):
+    data = []
+    labels = []
+
+    for label_folder in os.listdir(dataset_path):
+        label_path = os.path.join(dataset_path, label_folder)
+        label = 1 if label_folder == "genuine" else 0  # 1 for genuine, 0 for fake
+        for img_file in os.listdir(label_path):
+            img_path = os.path.join(label_path, img_file)
+            features = extract_features(img_path)
+            data.append(features)
+            labels.append(label)
+
+    return np.array(data), np.array(labels)
+
+# Step 3: Train Model
+def train_model(data, labels):
+    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.2, random_state=42)
+    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    print(f"Model Accuracy: {accuracy * 100:.2f}%")
+    return model
+
+# Step 4: Detect Fake Logo
+def detect_logo(model, image_path):
+    features = extract_features(image_path).reshape(1, -1)
+    prediction = model.predict(features)
+    return "Genuine" if prediction[0] == 1 else "Fake"
+
+# Main Function
+if __name__ == "__main__":
+    # Path to dataset folder (with 'genuine' and 'fake' subfolders)
+    dataset_path = "path/to/dataset"  # Replace with your dataset path
+
+    # Load dataset
+    print("Loading dataset...")
+    data, labels = load_dataset(dataset_path)
+
+    # Train model
+    print("Training model...")
+    model = train_model(data, labels)
+
+    # Test detection
+    test_image_path = "path/to/test/image.jpg"  # Replace with your test image path
+    print(f"Testing on image: {test_image_path}")
+    result = detect_logo(model, test_image_path)
+    print(f"Detection Result: {result}")
